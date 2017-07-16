@@ -2057,6 +2057,9 @@
                            (:optimize-constants opts))]
     (cond->
       (-> opts
+        ;; remove override entries
+        (update :foreign-libs
+          (fn [xs] (into [] (filter :file) xs)))
         (assoc
           :optimizations optimizations
           :output-dir output-dir

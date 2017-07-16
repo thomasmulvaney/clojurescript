@@ -159,7 +159,18 @@ case."
                          index provides)
                        index)]
         (if (:foreign dep)
-          (update-in index' [(:file dep)] merge dep)
+          (let [aprovide (first provides)]
+            (when-not (:url dep)
+              (assert (contains? index' aprovide)
+                (str "Invalid foreign lib override entry, "
+                      aprovide " never provided")))
+            (if-let [file (or (:file dep)
+                              (get-in index' [aprovide :file]))]
+              (update-in index' [file] merge dep)
+              (throw
+                (Exception.
+                  (str "Invalid foreign lib entry, :file never specified, "
+                    (pr-str dep))))))
           (assoc index' (:file dep) dep))))
     {} deps))
 
@@ -223,13 +234,20 @@ case."
   and :url"
   ([lib-spec] (load-foreign-library* lib-spec false))
   ([lib-spec cp-only?]
-    (let [find-func (if cp-only? io/resource find-url)]
-      (cond->
-        (merge lib-spec
-          {:foreign true
-           :url     (find-func (:file lib-spec))})
-        (:file-min lib-spec)
-        (assoc :url-min (find-func (:file-min lib-spec)))))))
+   (assert (or (contains? lib-spec :provides)
+               (contains? lib-spec :file))
+     (str "Foreign library entry does not specify :provides or :file, "
+       (pr-str lib-spec)))
+   (let [find-func (if cp-only? io/resource find-url)]
+     (cond->
+       (merge lib-spec
+         {:foreign true}
+         (when-let [url (try
+                          (find-func (:file lib-spec))
+                          (catch Throwable t nil))]
+           {:url url}))
+       (:file-min lib-spec)
+       (assoc :url-min (find-func (:file-min lib-spec)))))))
 
 (def load-foreign-library (memoize load-foreign-library*))
 

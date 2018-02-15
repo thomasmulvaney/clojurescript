@@ -1548,6 +1548,9 @@
   (is (thrown-with-msg? js/Error #".*Invalid arity: 0" ({})))
   (is (thrown-with-msg? js/Error #".*Invalid arity: 3" ({} 1 2 3))))
 
+(deftest test-cljs-2527
+  (is (= (seq [1 2 3]) (iterator-seq (-iterator [1 2 3])))))
+
 (comment
   ;; ObjMap
   ;; (let [ks (map (partial str "foo") (range 500))

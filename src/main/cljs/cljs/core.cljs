@@ -2444,10 +2444,15 @@ reduces them without incurring seq initialization"
   ([f val coll]
     (loop [val val, coll (seq coll)]
       (if coll
-        (let [nval (f val (first coll))]
-          (if (reduced? nval)
-            @nval
-            (recur nval (next coll))))
+        (if (chunked-seq? coll)
+          (let [nval (-reduce ^not-native (-chunked-first ^not-native coll) f val)]
+            (if (reduced? nval)
+              @nval
+              (recur nval (-chunked-next ^not-native coll))))
+          (let [nval (f val (first coll))]
+            (if (reduced? nval)
+              @nval
+              (recur nval (next coll)))))
         val))))
 
 (declare vec)
@@ -3454,8 +3459,8 @@ reduces them without incurring seq initialization"
             (seq s))))))
 
   IReduce
-  (-reduce [coll f] (seq-reduce f coll))
-  (-reduce [coll f start] (seq-reduce f start coll)))
+  (-reduce [coll f] (reduce f (-seq coll)))
+  (-reduce [coll f start] (reduce f start (-seq coll))))
 
 (es6-iterable LazySeq)
 
@@ -3509,6 +3514,7 @@ reduces them without incurring seq initialization"
      (ArrayChunk. arr off (alength arr)))
   ([arr off end]
      (ArrayChunk. arr off end)))
+
 
 (deftype ChunkedCons [chunk more meta ^:mutable __hash]
   Object
